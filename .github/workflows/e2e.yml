@@ -17,31 +17,41 @@ jobs:
           node-version: '20'
 
       # --- Backend ---
-      - name: Backend deps & build
+      - name: Backend deps & start
         working-directory: backend
+        env:
+          # Wichtig: relativ zu backend/prisma/schema.prisma
+          DATABASE_URL: "file:./dev.db"
+          JWT_SECRET: "devsecret"
         run: |
           npm ci
           npx prisma generate
           npx prisma migrate deploy
           npm run build
-          nohup node dist/server.js &
+          nohup node dist/server.js > ../backend.out.log 2>&1 &
 
       # --- Frontend ---
-      - name: Frontend deps & build
+      - name: Frontend deps & build & start
         working-directory: frontend
         run: |
           npm ci
           npm run build
           npm i -g serve wait-on
-          nohup serve -s dist -l 5173 &
+          nohup serve -s dist -l 5173 > ../frontend.out.log 2>&1 &
 
       - name: Wait for services
-        run: wait-on http://localhost:5173
+        run: |
+          npx wait-on http://localhost:4000
+          npx wait-on http://localhost:5173
 
       # --- Cypress (headless) ---
       - name: Cypress run
         working-directory: frontend
-        run: npx cypress run
+        env:
+          # Falls dein Frontend api.ts baseURL aus ENV liest:
+          VITE_API_BASE_URL: "http://localhost:4000"
+        run: |
+          npx cypress run
 
       # --- Artefakte (JUnit XML) ---
       - name: Upload JUnit
@@ -50,16 +60,27 @@ jobs:
         with:
           name: junit
           path: frontend/cypress/results/*.xml
+          if-no-files-found: ignore
 
-      # --- Optional: Direkt nach Xray importieren (setze Secret XRAY_TOKEN) ---
+      # --- Optional: Direkt nach Xray importieren ---
       - name: Import to Xray
         if: always()
         env:
           XRAY_TOKEN: ${{ secrets.XRAY_TOKEN }}
         run: |
+          shopt -s nullglob
           for f in frontend/cypress/results/*.xml; do
             curl -s -H "Authorization: Bearer $XRAY_TOKEN" \
                  -H "Content-Type: multipart/form-data" \
                  -F "file=@$f" \
                  "https://xray.cloud.getxray.app/api/v2/import/execution/junit?projectKey=MV";
           done
+
+      # --- (Debug bei Problemen) Logs anhängen ---
+      - name: Print backend & frontend logs (on failure)
+        if: failure()
+        run: |
+          echo "=== backend.out.log ==="
+          cat backend/backend.out.log || true
+          echo "=== frontend.out.log ==="
+          cat frontend/frontend.out.log || true
