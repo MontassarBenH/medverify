@@ -76,11 +76,16 @@ jobs:
       - name: Debug XML files
         if: always()
         run: |
+          if ! ls frontend/cypress/results/*.xml 1> /dev/null 2>&1; then
+            echo "No XML files generated - tests may have failed to run"
+            exit 0
+          fi
+          
           echo "=== Fixed XML Files ==="
           ls -lh frontend/cypress/results/*.xml || echo "No XML files"
           echo ""
-          echo "=== Sample XML content (first file) ==="
-          head -20 frontend/cypress/results/*.xml | head -20 || true
+          echo "=== Complete XML content (first file after fix) ==="
+          cat frontend/cypress/results/*.xml | head -50 || true
 
       # --- Fix empty testsuite names in XML files ---
       - name: Fix JUnit XML for Xray compatibility
@@ -135,9 +140,15 @@ jobs:
       - name: Merge JUnit results
         if: always()
         run: |
+          # Only run if XML files exist
+          if ! ls frontend/cypress/results/*.xml 1> /dev/null 2>&1; then
+            echo "No XML files found to merge"
+            exit 0
+          fi
+          
           npm install -g junit-merge
           mkdir -p frontend/cypress/merged
-          junit-merge -o frontend/cypress/merged/combined-results.xml frontend/cypress/results/*.xml || true
+          junit-merge -o frontend/cypress/merged/combined-results.xml frontend/cypress/results/*.xml || echo "Merge failed, will upload individual files"
 
       # --- Artefakte (JUnit XML) ---
       - name: Upload JUnit
@@ -172,9 +183,14 @@ jobs:
             echo "Uploading merged results to Xray..."
             ls -lh frontend/cypress/merged/combined-results.xml
             
+            # Show first few lines for debugging
+            echo "First 30 lines of merged file:"
+            head -30 frontend/cypress/merged/combined-results.xml
+            
             response=$(curl -s -w "\n%{http_code}" \
               -H "Authorization: Bearer $XRAY_TOKEN" \
-              -F "file=@frontend/cypress/merged/combined-results.xml" \
+              -H "Content-Type: multipart/form-data" \
+              -F "file=@frontend/cypress/merged/combined-results.xml;type=application/xml" \
               "https://xray.cloud.getxray.app/api/v2/import/execution/junit?projectKey=MV")
             
             http_code=$(echo "$response" | tail -n1)
@@ -199,7 +215,9 @@ jobs:
             exit 0
           fi
           
+          success_count=0
           for f in "${files[@]}"; do
+            echo ""
             echo "Uploading $f to Xray..."
             
             # Check if file has content
@@ -208,13 +226,16 @@ jobs:
               continue
             fi
             
-            # Show file size for debugging
+            # Show file info
             ls -lh "$f"
+            echo "First 20 lines:"
+            head -20 "$f"
             
-            # Upload to Xray
+            # Upload to Xray with explicit content type
             response=$(curl -s -w "\n%{http_code}" \
               -H "Authorization: Bearer $XRAY_TOKEN" \
-              -F "file=@$f" \
+              -H "Content-Type: multipart/form-data" \
+              -F "file=@$f;type=application/xml" \
               "https://xray.cloud.getxray.app/api/v2/import/execution/junit?projectKey=MV")
             
             http_code=$(echo "$response" | tail -n1)
@@ -223,11 +244,15 @@ jobs:
             if [ "$http_code" -eq 200 ]; then
               echo "✓ Successfully uploaded $f"
               echo "Response: $body"
+              success_count=$((success_count+1))
             else
               echo "✗ Failed to upload $f (HTTP $http_code)"
               echo "Response: $body"
             fi
           done
+          
+          echo ""
+          echo "Summary: Successfully uploaded $success_count out of ${#files[@]} files"
 
       # --- Debug: Logs bei Fehlschlag ---
       - name: Print backend & frontend logs (on failure)
