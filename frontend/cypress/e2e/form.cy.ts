@@ -1,4 +1,5 @@
 /// <reference types="cypress" />
+describe('Formularvalidierung', () => {
 
 it("zeigt Validierungswarnung bei fehlender Dosierung", () => {
   cy.request("POST", "http://localhost:4000/dev/seed");
@@ -26,3 +27,5 @@ it("zeigt Validierungswarnung bei fehlender Dosierung", () => {
   cy.contains("button", "Einreichen").click();
   cy.get('[data-testid="plausi-msg"]').should("contain.text", "Warnung");
 });
+});
+

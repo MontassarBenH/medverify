@@ -1,4 +1,6 @@
 // cypress/e2e/errors.cy.ts
+describe('Rezept – Fehlerprüfungen', () => {
+
 it("blockt Menge <= 0", () => {
   // Login
   cy.request("POST", "http://localhost:4000/dev/seed");
@@ -22,4 +24,5 @@ it("blockt Menge <= 0", () => {
   cy.get('[data-testid="plausi-msg"]', { timeout: 10000 })
     .should("be.visible")
     .and("contain.text", "Fehler");
+});
 });

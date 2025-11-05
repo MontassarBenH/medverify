@@ -1,4 +1,5 @@
 /// <reference types="cypress" />
+describe('Login – Apotheker', () => {
 
 it("login apo", () => {
   cy.request("POST", "http://localhost:4000/dev/seed");
@@ -17,3 +18,5 @@ it("login apo", () => {
   cy.wait("@list");
   cy.contains("Dashboard").should("be.visible");
 });
+});
+

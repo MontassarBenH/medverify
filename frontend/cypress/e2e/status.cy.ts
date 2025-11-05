@@ -1,4 +1,5 @@
 /// <reference types="cypress" />
+describe('Statusänderung – Prüfer', () => {
 
 it("setzt Status auf GUELTIG", () => {
   const patient = `Pruef Fall ${Date.now()}`;
@@ -46,4 +47,5 @@ it("setzt Status auf GUELTIG", () => {
   cy.get('[data-testid="status-filter"]').select("ALLE");
   cy.wait("@list");
   cy.contains("li", patient).find('[data-testid^="status-"]').should("contain.text", "GUELTIG");
+});
 });

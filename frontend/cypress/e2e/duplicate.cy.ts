@@ -1,4 +1,5 @@
 /// <reference types="cypress" />
+describe('Rezept – Duplikat-Prüfung', () => {
 
 it("blockt Duplikat am selben Tag", () => {
   cy.request("POST", "http://localhost:4000/dev/seed");
@@ -32,4 +33,5 @@ it("blockt Duplikat am selben Tag", () => {
   fill();
   cy.contains("button", "Einreichen").click();
   cy.get('[data-testid="plausi-msg"]').should("contain.text", "mögliches Duplikat");
+});
 });

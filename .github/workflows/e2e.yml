@@ -83,6 +83,24 @@ jobs:
             echo ""
           done
 
+      # --- Fix empty testsuite names in XML files ---
+      - name: Fix JUnit XML for Xray compatibility
+        if: always()
+        run: |
+          for f in frontend/cypress/results/*.xml; do
+            if [ -f "$f" ]; then
+              # Extract filename for suite name
+              filename=$(basename "$f" .xml)
+              testfile=$(grep -oP 'file="[^"]*"' "$f" | head -1 | cut -d'"' -f2 || echo "")
+              suitename=$(echo "$testfile" | sed 's/cypress\/e2e\///' | sed 's/\.cy\..*//' || echo "$filename")
+              
+              # Replace empty name="" with actual suite name
+              sed -i "s/name=\"\" /name=\"$suitename\" /" "$f"
+              
+              echo "Fixed $f with suite name: $suitename"
+            fi
+          done
+
       # --- Merge JUnit XML files ---
       - name: Merge JUnit results
         if: always()
@@ -119,6 +137,30 @@ jobs:
         env:
           XRAY_TOKEN: ${{ steps.xray_auth.outputs.XRAY_TOKEN }}
         run: |
+          # Try merged file first
+          if [ -f "frontend/cypress/merged/combined-results.xml" ]; then
+            echo "Uploading merged results to Xray..."
+            ls -lh frontend/cypress/merged/combined-results.xml
+            
+            response=$(curl -s -w "\n%{http_code}" \
+              -H "Authorization: Bearer $XRAY_TOKEN" \
+              -F "file=@frontend/cypress/merged/combined-results.xml" \
+              "https://xray.cloud.getxray.app/api/v2/import/execution/junit?projectKey=MV")
+            
+            http_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | sed '$d')
+            
+            if [ "$http_code" -eq 200 ]; then
+              echo "✓ Successfully uploaded merged results"
+              echo "Response: $body"
+              exit 0
+            else
+              echo "✗ Failed to upload merged results (HTTP $http_code)"
+              echo "Response: $body"
+            fi
+          fi
+          
+          # Fallback to individual files
           shopt -s nullglob
           files=(frontend/cypress/results/*.xml)
           

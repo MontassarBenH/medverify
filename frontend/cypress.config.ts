@@ -1,21 +1,26 @@
-import { defineConfig } from "cypress";
+import { defineConfig } from 'cypress';
 
 export default defineConfig({
   e2e: {
-    baseUrl: "http://localhost:5173",
-    supportFile: false,
-    defaultCommandTimeout: 10000, 
-  },
-  reporter: 'cypress-multi-reporters',
-    reporterOptions: {
-      reporterEnabled: 'spec, mocha-junit-reporter',
-      mochaJunitReporterReporterOptions: {
-        mochaFile: 'cypress/results/results-[hash].xml',
-        toConsole: false,
-        outputs: true,
-        testCaseSwitchClassnameAndName: false,
-        suiteTitleSeparatedBy: ' > ',
-        useFullSuiteTitle: true,
-      },
+    baseUrl: 'http://localhost:5173',
+    env: {
+      apiUrl: 'http://localhost:4000',
     },
+    setupNodeEvents(on, config) {
+      // implement node event listeners here
+    },
+    reporter: 'junit',
+    reporterOptions: {
+      mochaFile: 'cypress/results/results-[hash].xml',
+      toConsole: true,
+      useFullSuiteTitle: true,
+      suiteTitleSeparatedBy: ' > ',
+      testCaseSwitchClassnameAndName: false,
+      rootSuiteTitle: 'Cypress Tests', 
+      testsuitesTitle: 'Medverify E2E Tests',
+    },
+    video: false,
+    screenshotOnRunFailure: true,
+    specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
+  },
 });
