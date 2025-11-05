@@ -1,0 +1,170 @@
+# 💊 MedVerify
+
+MedVerify ist eine moderne Webanwendung zur sicheren, nachvollziehbaren und validierten Verwaltung von **digitalen Rezepten** in Apotheken und Prüfstellen.  
+Sie kombiniert eine einfache Benutzeroberfläche mit medizinischer Logik, Prüfstatus-Verfolgung und automatisierten Tests über GitHub Actions & Cypress.
+
+---
+
+## 🧠 Überblick
+
+**MedVerify** ermöglicht das Erstellen, Prüfen und Verwalten von Rezepten durch zwei Benutzerrollen:
+
+- **Apotheker** (`apo@demo.local`)  
+  → Erfasst Rezepte und reicht sie ein.  
+
+- **Prüfer** (`pruefer@demo.local`)  
+  → Überprüft eingereichte Rezepte, ändert deren Status (z. B. `GUELTIG`, `PRUEFEN`, `ABGELEHNT`).
+
+Jede Aktion wird automatisch validiert, geloggt und über die UI visualisiert.
+
+---
+
+## 🧩 Hauptfunktionen
+
+| Kategorie | Beschreibung |
+|------------|---------------|
+| 🔐 **Login-System** | Authentifizierung per Demo-User (`apo@demo.local`, `password123`) |
+| 💊 **Rezept-Erfassung** | Patient, Medikament, Menge, Datum, Dosierung |
+| 🚫 **Duplikat-Erkennung** | Blockiert doppelte Einträge (Patient + Medikament + Datum) |
+| ⚖️ **Validierungslogik** | Prüft auf fehlende Dosierung und ungültige Mengen |
+| 🕓 **Status-System** | PRUEFEN → GUELTIG → ABGELEHNT |
+| 🧾 **Audit-Log** | Speichert Statusänderungen automatisch |
+| 💅 **UI mit TailwindCSS** | Klare Buttons, Badges und Formulare |
+| 🤖 **End-to-End Tests (Cypress)** | Vollständige Testabdeckung für Login, Formulare und Statusänderungen |
+| ☁️ **CI/CD via GitHub Actions** | Automatisierte Builds und Tests |
+| 🧮 **Xray-Integration (optional)** | JUnit-Ergebnisse werden automatisch importiert |
+
+---
+
+## 🧱 Architektur
+
+medverify/
+├── backend/ # Node.js + Express + Prisma
+│ ├── prisma/schema.prisma
+│ ├── src/
+│ │ ├── server.ts # Hauptserver mit API-Routen
+│ │ ├── routes/ # Auth / Prescriptions / AuditLog
+│ │ └── middleware/
+│ └── package.json
+│
+├── frontend/ # React + Vite + TailwindCSS
+│ ├── src/
+│ │ ├── App.tsx # Routing + Layout
+│ │ ├── api.ts # Axios API Client
+│ │ ├── pages/ # Login, Dashboard, Formular
+│ │ └── components/
+│ └── package.json
+│
+├── cypress/ # E2E Tests
+│ ├── e2e/
+│ │ ├── login.cy.ts
+│ │ ├── form.cy.ts
+│ │ ├── status.cy.ts
+│ │ └── duplicate.cy.ts
+│ └── cypress.config.ts
+│
+└── .github/workflows/medverify-e2e.yml
+
+
+
+---
+
+## ⚙️ Lokale Installation
+
+### Voraussetzungen
+- Node.js ≥ 20
+- npm ≥ 9
+- SQLite (wird automatisch durch Prisma angelegt)
+
+### 1️⃣ Repository klonen
+```bash
+git clone https://github.com/DEINUSERNAME/medverify.git
+cd medverify
+2️⃣ Backend installieren
+
+cd backend
+npm install
+npx prisma generate
+npx prisma migrate dev
+npm run dev
+→ läuft unter http://localhost:4000
+
+3️⃣ Frontend installieren
+
+cd ../frontend
+npm install
+npm run dev
+→ läuft unter http://localhost:5173
+
+4️⃣ Login-Daten (Seed)
+Das Backend enthält Demo-Daten, erreichbar über:
+
+
+POST http://localhost:4000/dev/seed
+✅ Testen (Cypress)
+
+cd frontend
+npx cypress open
+oder Headless:
+
+
+npx cypress run
+Die Tests prüfen:
+
+Login (login.cy.ts)
+
+Formularvalidierung (form.cy.ts)
+
+Fehlerhafte Eingaben (errors.cy.ts)
+
+Duplikaterkennung (duplicate.cy.ts)
+
+Statuswechsel (status.cy.ts)
+
+☁️ CI/CD (GitHub Actions)
+Die Datei .github/workflows/medverify-e2e.yml führt bei jedem Push automatisch:
+
+Backend-Build
+
+Frontend-Build
+
+Cypress-E2E-Tests
+
+JUnit-Bericht Upload
+
+(optional) Upload zu Xray
+
+Secrets
+Secret	Beschreibung
+XRAY_TOKEN	(Optional) Token zur JUnit-Import-API von Xray
+XRAY_CLIENT_ID / XRAY_CLIENT_SECRET	(Optional) falls automatischer Token-Abruf gewünscht
+
+🧩 Technologien
+Bereich	Tools
+Frontend	React 19, Vite 7, TailwindCSS 4
+Backend	Node.js, Express, Prisma ORM
+Datenbank	SQLite
+Tests	Cypress 15
+CI/CD	GitHub Actions
+Reporting	JUnit XML + Xray API
+Sprache	TypeScript
+
+🔮 Geplante Erweiterungen
+ Verbesserte UI/UX (Dark Mode, Modal-Dialoge)
+
+ Benutzerverwaltung mit Rollen
+
+ Mehrsprachigkeit (Deutsch/Englisch)
+
+ API-Rate-Limiting & Auth-Token-Refresh
+
+ Automatische JUnit → Xray-Integration mit Refresh Token
+
+ Deployment via Docker Compose
+
+🧑‍💻 Autor
+Entwicklerin: Montassar Ben Hmida
+Solo-Projekt – Planung, Entwicklung, Test und CI/CD von Grund auf.
+
+📄 Lizenz
+Apache License © 2025

@@ -1,21 +1,32 @@
-@"
 # Node
 node_modules/
 npm-debug.log*
-pnpm-lock.yaml
-yarn.lock
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Build-Outputs
+# Builds
 dist/
-frontend/dist/
-backend/dist/
+build/
+.cache/
+.vite/
 
-# Env & DB & Uploads
+# Environment
 .env
-backend/prisma/dev.db
-backend/uploads/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# IDE
-.vscode/
-.idea/
-"@ | Out-File -Encoding utf8 .gitignore
+# Cypress
+frontend/cypress/screenshots/
+frontend/cypress/videos/
+frontend/cypress/results/
+
+# Prisma
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+
+# OS
+.DS_Store
+Thumbs.db
