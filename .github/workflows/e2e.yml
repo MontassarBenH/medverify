@@ -20,7 +20,6 @@ jobs:
       - name: Backend deps & start
         working-directory: backend
         env:
-          # Wichtig: relativ zu backend/prisma/schema.prisma
           DATABASE_URL: "file:./dev.db"
           JWT_SECRET: "devsecret"
         run: |
@@ -30,9 +29,9 @@ jobs:
           npx prisma migrate deploy
           npm run build
           # Backend im Hintergrund starten
-          nohup node dist/server.js > ../backend.out.log 2>&1 &
+          nohup node dist/server.js > backend.out.log 2>&1 &
 
-      # --- Aktiver Health-Check + Seed (ohne wait-on auf :4000) ---
+      # --- Aktiver Health-Check + Seed ---
       - name: Backend health check & seed (retry)
         run: |
           set -e
@@ -58,7 +57,7 @@ jobs:
           npm ci
           npm run build
           npm i -g serve wait-on
-          nohup serve -s dist -l 5173 > ../frontend.out.log 2>&1 &
+          nohup serve -s dist -l 5173 > frontend.out.log 2>&1 &
 
       # --- Nur noch auf Frontend warten ---
       - name: Wait for frontend
@@ -80,18 +79,61 @@ jobs:
           path: frontend/cypress/results/*.xml
           if-no-files-found: ignore
 
-      # --- Optional: Direkt nach Xray importieren ---
+      # --- Authenticate with Xray and get token ---
+      - name: Authenticate with Xray
+        if: always()
+        id: xray_auth
+        env:
+          XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
+          XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
+        run: |
+          TOKEN=$(curl -s -X POST https://xray.cloud.getxray.app/api/v2/authenticate \
+            -H "Content-Type: application/json" \
+            -d "{\"client_id\":\"$XRAY_CLIENT_ID\",\"client_secret\":\"$XRAY_CLIENT_SECRET\"}" | tr -d '"')
+          echo "XRAY_TOKEN=$TOKEN" >> $GITHUB_OUTPUT
+
+      # --- Import to Xray with better error handling ---
       - name: Import to Xray
         if: always()
         env:
-          XRAY_TOKEN: ${{ secrets.XRAY_TOKEN }}
+          XRAY_TOKEN: ${{ steps.xray_auth.outputs.XRAY_TOKEN }}
         run: |
           shopt -s nullglob
-          for f in frontend/cypress/results/*.xml; do
-            curl -s -H "Authorization: Bearer $XRAY_TOKEN" \
-                 -H "Content-Type: multipart/form-data" \
-                 -F "file=@$f" \
-                 "https://xray.cloud.getxray.app/api/v2/import/execution/junit?projectKey=MV";
+          files=(frontend/cypress/results/*.xml)
+          
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No JUnit XML files found in frontend/cypress/results/"
+            exit 0
+          fi
+          
+          for f in "${files[@]}"; do
+            echo "Uploading $f to Xray..."
+            
+            # Check if file has content
+            if [ ! -s "$f" ]; then
+              echo "Warning: $f is empty, skipping"
+              continue
+            fi
+            
+            # Show file size for debugging
+            ls -lh "$f"
+            
+            # Upload to Xray
+            response=$(curl -s -w "\n%{http_code}" \
+              -H "Authorization: Bearer $XRAY_TOKEN" \
+              -F "file=@$f" \
+              "https://xray.cloud.getxray.app/api/v2/import/execution/junit?projectKey=MV")
+            
+            http_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | sed '$d')
+            
+            if [ "$http_code" -eq 200 ]; then
+              echo "✓ Successfully uploaded $f"
+              echo "Response: $body"
+            else
+              echo "✗ Failed to upload $f (HTTP $http_code)"
+              echo "Response: $body"
+            fi
           done
 
       # --- Debug: Logs bei Fehlschlag ---
