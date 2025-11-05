@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Mocha Tests" time="5.017" tests="1" failures="0">
+  <testsuite name="Root Suite" timestamp="2025-11-04T19:49:46" tests="1" file="cypress\e2e\duplicate.cy.ts" time="5.012" failures="0">
+    <testcase name="blockt Duplikat am selben Tag" time="4.968" classname="blockt Duplikat am selben Tag">
+    </testcase>
+  </testsuite>
+</testsuites>

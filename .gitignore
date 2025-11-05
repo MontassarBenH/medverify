@@ -1,0 +1,21 @@
+@"
+# Node
+node_modules/
+npm-debug.log*
+pnpm-lock.yaml
+yarn.lock
+
+# Build-Outputs
+dist/
+frontend/dist/
+backend/dist/
+
+# Env & DB & Uploads
+.env
+backend/prisma/dev.db
+backend/uploads/
+
+# IDE
+.vscode/
+.idea/
+"@ | Out-File -Encoding utf8 .gitignore

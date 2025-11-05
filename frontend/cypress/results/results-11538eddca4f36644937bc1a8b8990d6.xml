@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Mocha Tests" time="4.524" tests="1" failures="1">
+  <testsuite name="Root Suite" timestamp="2025-11-04T21:19:27" tests="1" file="cypress\e2e\status.cy.ts" time="4.523" failures="1">
+    <testcase name="setzt Status auf GUELTIG" time="0.000" classname="setzt Status auf GUELTIG">
+      <failure message="Timed out retrying after 4000ms: Expected to find content: &apos;Login&apos; but never did." type="AssertionError"><![CDATA[AssertionError: Timed out retrying after 4000ms: Expected to find content: 'Login' but never did.
+    at Context.eval (webpack://frontend/./cypress/e2e/status.cy.ts:12:5)]]></failure>
+    </testcase>
+  </testsuite>
+</testsuites>
