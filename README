@@ -78,7 +78,7 @@ medverify/
 
 ### 1️⃣ Repository klonen
 ```bash
-git clone https://github.com/DEINUSERNAME/medverify.git
+git clone 
 cd medverify
 2️⃣ Backend installieren
 
