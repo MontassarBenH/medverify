@@ -6,13 +6,13 @@ export default defineConfig({
     defaultCommandTimeout: 10000,
     requestTimeout: 10000,
     pageLoadTimeout: 60000,
-    retries: { runMode: 2, openMode: 0 }, // leichte Retries gegen Flakes
+    retries: { runMode: 2, openMode: 0 }, 
     setupNodeEvents(on, config) {
-      // node event listeners (optional logging etc.)
+
     },
     reporter: 'junit',
     reporterOptions: {
-      mochaFile: 'cypress/results/results.xml', // eine Datei, einfacher für Xray
+      mochaFile: 'cypress/results/results-[hash].xml',
       toConsole: false,
       useFullSuiteTitle: true,
       suiteTitleSeparatedBy: ' > ',
