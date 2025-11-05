@@ -29,7 +29,7 @@ jobs:
           npx prisma migrate deploy
           npm run build
           # Backend im Hintergrund starten
-          nohup node dist/server.js > backend.out.log 2>&1 &
+          nohup node dist/server.js > ../backend.out.log 2>&1 &
 
       # --- Aktiver Health-Check + Seed ---
       - name: Backend health check & seed (retry)
@@ -42,7 +42,7 @@ jobs:
             if [ "$tries" -ge 30 ]; then
               echo "Backend did not become ready in time. Dumping logs:"
               echo "=== backend.out.log ==="
-              cat backend/backend.out.log || true
+              cat backend.out.log || true
               exit 1
             fi
             sleep 2
@@ -57,7 +57,7 @@ jobs:
           npm ci
           npm run build
           npm i -g serve wait-on
-          nohup serve -s dist -l 5173 > frontend.out.log 2>&1 &
+          nohup serve -s dist -l 5173 > ../frontend.out.log 2>&1 &
 
       # --- Nur noch auf Frontend warten ---
       - name: Wait for frontend
@@ -80,77 +80,80 @@ jobs:
         working-directory: frontend
         env:
           VITE_API_BASE_URL: "http://localhost:4000"
-        run: npx cypress run
+        run: |
+          # Stelle sicher, dass das Results-Verzeichnis existiert
+          mkdir -p cypress/results
+          npx cypress run
 
-      # --- Fix empty testsuite names in XML files ---
+      # --- Optional: JUnit XML aufräumen (leere Suites entfernen / Summen setzen) ---
       - name: Fix JUnit XML for Xray compatibility
         if: always()
         run: |
-          # Only run if XML files exist
+          # Nur ausführen, wenn XML vorhanden ist
           if ! ls frontend/cypress/results/*.xml 1> /dev/null 2>&1; then
             echo "No XML files found to fix"
             exit 0
           fi
-          
+
           cat > fix_xml.py << 'PYTHON_SCRIPT'
           #!/usr/bin/env python3
           import sys
           import xml.etree.ElementTree as ET
           from pathlib import Path
-          
+
           def fix_junit_xml(filepath):
               try:
                   tree = ET.parse(filepath)
                   root = tree.getroot()
-                  
-                  # Collect all testsuites to process
+
+                  # Sammle leere testsuites
                   testsuites_to_remove = []
-                  
                   for testsuite in root.findall('.//testsuite'):
-                      tests = int(testsuite.get('tests', '0'))
-                      
-                      # Remove testsuites with 0 tests
+                      tests = int(testsuite.get('tests', '0') or 0)
                       if tests == 0:
                           testsuites_to_remove.append(testsuite)
-                  
-                  # Remove empty testsuites
+
                   for ts in testsuites_to_remove:
-                      root.remove(ts)
-                      print(f"  Removed empty testsuite from: {filepath.name}")
-                  
-                  # Update root testsuites name if present
+                      parent = root
+                      # root kann <testsuites> sein, sonst ist testsuite selbst root
+                      try:
+                          parent.remove(ts)
+                          print(f"  Removed empty testsuite from: {filepath.name}")
+                      except Exception:
+                          pass
+
                   if root.tag == 'testsuites':
                       if not root.get('name'):
                           root.set('name', 'Cypress E2E Tests')
-                      
-                      # Recalculate totals after removing empty testsuites
+
                       total_tests = 0
                       total_failures = 0
                       total_time = 0.0
-                      
-                      for ts in root.findall('.//testsuite'):
-                          total_tests += int(ts.get('tests', '0'))
-                          total_failures += int(ts.get('failures', '0'))
-                          total_time += float(ts.get('time', '0'))
-                      
+                      for ts in root.findall('testsuite'):
+                          total_tests += int(ts.get('tests', '0') or 0)
+                          total_failures += int(ts.get('failures', '0') or 0)
+                          try:
+                              total_time += float(ts.get('time', '0') or 0)
+                          except ValueError:
+                              pass
+
                       root.set('tests', str(total_tests))
                       root.set('failures', str(total_failures))
                       root.set('time', str(total_time))
-                  
+
                   tree.write(filepath, encoding='utf-8', xml_declaration=True)
                   return True
               except Exception as e:
                   print(f"Error: {filepath}: {e}", file=sys.stderr)
                   return False
-          
+
           path = Path(sys.argv[1])
           files = list(path.glob('*.xml')) if path.is_dir() else [path]
           print(f"Processing {len(files)} XML file(s)...")
-          
           for xml_file in files:
               fix_junit_xml(xml_file)
           PYTHON_SCRIPT
-          
+
           chmod +x fix_xml.py
           python3 fix_xml.py frontend/cypress/results/
 
@@ -162,34 +165,45 @@ jobs:
             echo "No XML files generated - tests may have failed to run"
             exit 0
           fi
-          
+
           echo "=== Fixed XML Files ==="
           ls -lh frontend/cypress/results/*.xml || echo "No XML files"
           echo ""
           echo "=== Complete XML content (first file after fix) ==="
-          cat frontend/cypress/results/*.xml | head -50 || true
+          head -50 frontend/cypress/results/*.xml || true
 
-      # --- Merge JUnit XML files ---
-      - name: Merge JUnit results
+      # --- Merge JUnit XML files (falls mehrere Dateien existieren) ---
+      - name: Merge JUnit results (if needed)
         if: always()
         run: |
-          # Only run if XML files exist
-          if ! ls frontend/cypress/results/*.xml 1> /dev/null 2>&1; then
-            echo "No XML files found to merge"
+          set -e
+          mkdir -p frontend/cypress/merged frontend/cypress/for-xray
+
+          # Falls genau eine Datei existiert, kopiere sie direkt als "for-xray/results.xml"
+          files_count=$(ls -1 frontend/cypress/results/*.xml 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$files_count" = "1" ]; then
+            single_file=$(ls -1 frontend/cypress/results/*.xml)
+            echo "Single JUnit XML detected: $single_file"
+            cp "$single_file" frontend/cypress/for-xray/results.xml
             exit 0
           fi
-          
+
+          # Sonst mergen
+          echo "Multiple JUnit XML files detected, merging..."
           npm install -g junit-merge
-          mkdir -p frontend/cypress/merged
-          junit-merge -o frontend/cypress/merged/combined-results.xml frontend/cypress/results/*.xml || echo "Merge failed, will upload individual files"
+          junit-merge -o frontend/cypress/merged/combined-results.xml frontend/cypress/results/*.xml
+          cp frontend/cypress/merged/combined-results.xml frontend/cypress/for-xray/results.xml
 
       # --- Artefakte (JUnit XML) ---
-      - name: Upload JUnit
+      - name: Upload JUnit (all)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: junit
-          path: frontend/cypress/results/*.xml
+          path: |
+            frontend/cypress/results/*.xml
+            frontend/cypress/merged/combined-results.xml
+            frontend/cypress/for-xray/results.xml
           if-no-files-found: ignore
 
       # --- Authenticate with Xray and get token ---
@@ -205,93 +219,48 @@ jobs:
             -d "{\"client_id\":\"$XRAY_CLIENT_ID\",\"client_secret\":\"$XRAY_CLIENT_SECRET\"}" | tr -d '"')
           echo "XRAY_TOKEN=$TOKEN" >> $GITHUB_OUTPUT
 
-      # --- Import to Xray with better error handling ---
+      # --- Import to Xray (kein manueller Content-Type Header!) ---
       - name: Import to Xray
         if: always()
         env:
           XRAY_TOKEN: ${{ steps.xray_auth.outputs.XRAY_TOKEN }}
         run: |
-          # Try merged file first
-          if [ -f "frontend/cypress/merged/combined-results.xml" ]; then
-            echo "Uploading merged results to Xray..."
-            ls -lh frontend/cypress/merged/combined-results.xml
-            
-            # Show first few lines for debugging
-            echo "First 30 lines of merged file:"
-            head -30 frontend/cypress/merged/combined-results.xml
-            
-            response=$(curl -s -w "\n%{http_code}" \
-              -H "Authorization: Bearer $XRAY_TOKEN" \
-              -H "Content-Type: multipart/form-data" \
-              -F "file=@frontend/cypress/merged/combined-results.xml;type=application/xml" \
-              "https://xray.cloud.getxray.app/api/v2/import/execution/junit?projectKey=MV")
-            
-            http_code=$(echo "$response" | tail -n1)
-            body=$(echo "$response" | sed '$d')
-            
-            if [ "$http_code" -eq 200 ]; then
-              echo "✓ Successfully uploaded merged results"
-              echo "Response: $body"
-              exit 0
-            else
-              echo "✗ Failed to upload merged results (HTTP $http_code)"
-              echo "Response: $body"
-            fi
-          fi
-          
-          # Fallback to individual files
-          shopt -s nullglob
-          files=(frontend/cypress/results/*.xml)
-          
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "No JUnit XML files found in frontend/cypress/results/"
+          set -e
+          RESULTS="frontend/cypress/for-xray/results.xml"
+
+          if [ ! -s "$RESULTS" ]; then
+            echo "No results file at $RESULTS. Skipping Xray upload."
             exit 0
           fi
-          
-          success_count=0
-          for f in "${files[@]}"; do
-            echo ""
-            echo "Uploading $f to Xray..."
-            
-            # Check if file has content
-            if [ ! -s "$f" ]; then
-              echo "Warning: $f is empty, skipping"
-              continue
-            fi
-            
-            # Show file info
-            ls -lh "$f"
-            echo "First 20 lines:"
-            head -20 "$f"
-            
-            # Upload to Xray with explicit content type
-            response=$(curl -s -w "\n%{http_code}" \
-              -H "Authorization: Bearer $XRAY_TOKEN" \
-              -H "Content-Type: multipart/form-data" \
-              -F "file=@$f;type=application/xml" \
-              "https://xray.cloud.getxray.app/api/v2/import/execution/junit?projectKey=MV")
-            
-            http_code=$(echo "$response" | tail -n1)
-            body=$(echo "$response" | sed '$d')
-            
-            if [ "$http_code" -eq 200 ]; then
-              echo "✓ Successfully uploaded $f"
-              echo "Response: $body"
-              success_count=$((success_count+1))
-            else
-              echo "✗ Failed to upload $f (HTTP $http_code)"
-              echo "Response: $body"
-            fi
-          done
-          
-          echo ""
-          echo "Summary: Successfully uploaded $success_count out of ${#files[@]} files"
+
+          echo "Uploading $RESULTS to Xray..."
+          ls -lh "$RESULTS"
+          echo "First 30 lines:"
+          head -30 "$RESULTS" || true
+
+          # WICHTIG: KEIN manuelles -H "Content-Type: multipart/form-data"
+          response=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer $XRAY_TOKEN" \
+            -F "file=@$RESULTS;type=application/xml" \
+            "https://xray.cloud.getxray.app/api/v2/import/execution/junit?projectKey=MV")
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          if [ "$http_code" -eq 200 ]; then
+            echo "✓ Successfully uploaded results to Xray"
+            echo "Response: $body"
+          else
+            echo "✗ Failed to upload results to Xray (HTTP $http_code)"
+            echo "Response: $body"
+            exit 1
+          fi
 
       # --- Debug: Logs bei Fehlschlag ---
       - name: Print backend & frontend logs (on failure)
         if: failure()
         run: |
           echo "=== backend.out.log ==="
-          cat backend/backend.out.log || true
+          cat backend.out.log || true
           echo "=== frontend.out.log ==="
-          cat frontend/frontend.out.log || true
+          cat frontend.out.log || true

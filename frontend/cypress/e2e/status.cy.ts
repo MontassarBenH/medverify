@@ -1,51 +1,83 @@
 /// <reference types="cypress" />
+
 describe('Statusänderung – Prüfer', () => {
+  it('setzt Status auf GUELTIG', () => {
+    const patient = `Pruef Fall ${Date.now()}`;
+    cy.request('POST', 'http://localhost:4000/dev/seed');
 
-it("setzt Status auf GUELTIG", () => {
-  const patient = `Pruef Fall ${Date.now()}`;
-  cy.request("POST", "http://localhost:4000/dev/seed");
+    // === APO anlegen ===
+    cy.intercept('POST', 'http://localhost:4000/auth/login').as('loginApo');
+    cy.intercept('GET', 'http://localhost:4000/prescriptions*').as('listApo');
 
-  // Als Apotheker anlegen
-  cy.visit("/");
-  cy.get('input[placeholder="E-Mail"]').clear().type("apo@demo.local");
-  cy.get('input[placeholder="Passwort"]').clear().type("password123");
-  cy.contains("button", "Einloggen").click();
+    cy.visit('/');
+    cy.get('input[placeholder="E-Mail"]').clear().type('apo@demo.local');
+    cy.get('input[placeholder="Passwort"]').clear().type('password123');
+    cy.contains('button', 'Einloggen').click();
 
-  cy.contains("Angemeldet als APOTHEKER", { timeout: 10000 }).should("be.visible");
-  cy.contains("Rezept erfassen", { timeout: 10000 }).should("be.visible");
+    cy.wait('@loginApo').its('response.statusCode').should('eq', 200);
+    cy.wait('@listApo');
 
-  cy.get('input[placeholder="Patient"]').type(patient);
-  cy.get('input[placeholder="Medikament"]').type("Ibuprofen");
-  cy.get('input[placeholder="Menge"]').type("1");
-  cy.get('input[placeholder="Ausstellungsdatum"]').type("2025-01-10");
+    cy.contains('Angemeldet als APOTHEKER', { timeout: 10000 }).should('be.visible');
+    cy.contains('Rezept erfassen', { timeout: 10000 }).should('be.visible');
 
-  cy.intercept("POST", "http://localhost:4000/prescriptions").as("createRx");
-  cy.contains("button", "Einreichen").click();
-  cy.wait("@createRx").its("response.statusCode").should("eq", 201);
+    cy.get('input[placeholder="Patient"]').type(patient);
+    cy.get('input[placeholder="Medikament"]').type('Ibuprofen');
+    cy.get('input[placeholder="Menge"]').type('1');
+    cy.get('input[placeholder="Ausstellungsdatum"]').type('2025-01-10');
 
-  // Als Prüfer
-  cy.visit("/");
-  cy.get('input[placeholder="E-Mail"]').clear().type("pruefer@demo.local");
-  cy.get('input[placeholder="Passwort"]').clear().type("password123");
-  cy.contains("button", "Einloggen").click();
+    cy.intercept('POST', 'http://localhost:4000/prescriptions').as('createRx');
+    cy.contains('button', 'Einreichen').click();
+    cy.wait('@createRx').its('response.statusCode').should('eq', 201);
 
-  cy.contains("Angemeldet als PRUEFER", { timeout: 10000 }).should("be.visible");
+    // === PRÜFER einloggen ===
+    cy.intercept('POST', 'http://localhost:4000/auth/login').as('loginPruefer');
+    cy.intercept('GET', 'http://localhost:4000/prescriptions*').as('listPruefer');
 
-  cy.intercept("GET", "http://localhost:4000/prescriptions*").as("list");
-  cy.get('[data-testid="status-filter"]').select("PRUEFEN");
-  cy.wait("@list");
+    cy.visit('/');
+    cy.get('input[placeholder="E-Mail"]').clear().type('pruefer@demo.local');
+    cy.get('input[placeholder="Passwort"]').clear().type('password123');
+    cy.contains('button', 'Einloggen').click();
 
-  cy.intercept("PATCH", /\/prescriptions\/\d+\/status$/).as("patchStatus");
-  cy.contains("li", patient).within(() => {
-    cy.contains("GUELTIG").click();
+    cy.wait('@loginPruefer').its('response.statusCode').should('eq', 200);
+    cy.wait('@listPruefer');
+
+    // Filter auf PRUEFEN -> Reload abwarten
+    cy.intercept('GET', 'http://localhost:4000/prescriptions*').as('listAfterFilter');
+    cy.get('[data-testid="status-filter"]').select('PRUEFEN');
+    cy.wait('@listAfterFilter');
+
+    // Warten, bis der Patient erscheint (Backend-Propagation etc.)
+    cy.contains(patient, { timeout: 30000 }).should('exist');
+
+    // *** WICHTIG: Intercepts VOR dem Klick setzen ***
+    cy.intercept('PATCH', /\/prescriptions\/\d+\/status$/).as('patchStatus');
+    cy.intercept('GET', 'http://localhost:4000/prescriptions*').as('listReloadAfterPatch');
+
+    // In der Zeile auf GUELTIG klicken
+    cy.contains(patient)
+      .parents('li, tr, [data-testid="rx-row"]')
+      .first()
+      .within(() => {
+        cy.contains(/^GUELTIG$/).should('be.visible').click();
+      });
+
+    // Erst auf PATCH warten …
+    cy.wait('@patchStatus').its('response.statusCode').should('eq', 200);
+    // … dann auf den Reload-GET, der direkt nach dem PATCH kommt
+    cy.wait('@listReloadAfterPatch');
+
+    // In PRUEFEN nicht mehr vorhanden
+    cy.contains('li, tr, [data-testid="rx-row"]', patient).should('not.exist');
+
+    // In ALLE prüfen
+    cy.intercept('GET', 'http://localhost:4000/prescriptions*').as('listAll');
+    cy.get('[data-testid="status-filter"]').select('ALLE');
+    cy.wait('@listAll');
+
+    cy.contains('li, tr, [data-testid="rx-row"]', patient, { timeout: 15000 })
+      .should('be.visible')
+      .within(() => {
+        cy.get('[data-testid^="status-"]').should('contain.text', 'GUELTIG');
+      });
   });
-  cy.wait("@patchStatus").its("response.statusCode").should("eq", 200);
-
-  cy.wait("@list");
-  cy.contains("li", patient).should("not.exist");
-
-  cy.get('[data-testid="status-filter"]').select("ALLE");
-  cy.wait("@list");
-  cy.contains("li", patient).find('[data-testid^="status-"]').should("contain.text", "GUELTIG");
-});
 });
