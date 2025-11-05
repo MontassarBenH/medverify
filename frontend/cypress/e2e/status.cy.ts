@@ -46,10 +46,8 @@ describe('Statusänderung – Prüfer', () => {
     cy.get('[data-testid="status-filter"]').select('PRUEFEN');
     cy.wait('@listAfterFilter');
 
-    // Warten, bis der Patient erscheint (Backend-Propagation etc.)
     cy.contains(patient, { timeout: 30000 }).should('exist');
 
-    // *** WICHTIG: Intercepts VOR dem Klick setzen ***
     cy.intercept('PATCH', /\/prescriptions\/\d+\/status$/).as('patchStatus');
     cy.intercept('GET', 'http://localhost:4000/prescriptions*').as('listReloadAfterPatch');
 
@@ -63,7 +61,6 @@ describe('Statusänderung – Prüfer', () => {
 
     // Erst auf PATCH warten …
     cy.wait('@patchStatus').its('response.statusCode').should('eq', 200);
-    // … dann auf den Reload-GET, der direkt nach dem PATCH kommt
     cy.wait('@listReloadAfterPatch');
 
     // In PRUEFEN nicht mehr vorhanden

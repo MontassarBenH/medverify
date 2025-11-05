@@ -162,7 +162,7 @@ app.post(
 );
 
 /**
- * Liste holen (optional nach Status filtern)
+ * Liste holen 
  */
 app.get("/prescriptions", auth(), async (req: any, res) => {
   const { status } = req.query as { status?: Status };

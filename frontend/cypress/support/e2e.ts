@@ -16,11 +16,10 @@ Cypress.Commands.add('loginAs', (email: string, password = 'password123') => {
   cy.contains('button', 'Einloggen').should('be.enabled').click();
 
   cy.wait('@login').its('response.statusCode').should('eq', 200);
-  cy.wait('@list'); // erstes Laden des Dashboards/Liste
+  cy.wait('@list'); 
 });
 
 Cypress.Commands.add('waitForPrescriptions', () => {
-  // Sichert, dass bei späteren Reloads/Filterwechseln gewartet wird
   cy.intercept('GET', 'http://localhost:4000/prescriptions*').as('listReload');
   cy.wait('@listReload');
 });

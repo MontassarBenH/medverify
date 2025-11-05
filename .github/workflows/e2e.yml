@@ -81,11 +81,9 @@ jobs:
         env:
           VITE_API_BASE_URL: "http://localhost:4000"
         run: |
-          # Stelle sicher, dass das Results-Verzeichnis existiert
           mkdir -p cypress/results
           npx cypress run
 
-      # --- Optional: JUnit XML aufräumen (leere Suites entfernen / Summen setzen) ---
       - name: Fix JUnit XML for Xray compatibility
         if: always()
         run: |
@@ -115,7 +113,6 @@ jobs:
 
                   for ts in testsuites_to_remove:
                       parent = root
-                      # root kann <testsuites> sein, sonst ist testsuite selbst root
                       try:
                           parent.remove(ts)
                           print(f"  Removed empty testsuite from: {filepath.name}")
@@ -219,7 +216,6 @@ jobs:
             -d "{\"client_id\":\"$XRAY_CLIENT_ID\",\"client_secret\":\"$XRAY_CLIENT_SECRET\"}" | tr -d '"')
           echo "XRAY_TOKEN=$TOKEN" >> $GITHUB_OUTPUT
 
-      # --- Import to Xray (kein manueller Content-Type Header!) ---
       - name: Import to Xray
         if: always()
         env:
