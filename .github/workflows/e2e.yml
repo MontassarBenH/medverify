@@ -20,7 +20,6 @@ jobs:
       - name: Backend deps & start
         working-directory: backend
         env:
-          # Wichtig: relativ zu backend/prisma/schema.prisma
           DATABASE_URL: "file:./dev.db"
           JWT_SECRET: "devsecret"
         run: |

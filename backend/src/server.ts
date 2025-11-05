@@ -14,10 +14,6 @@ app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || "devsecret";
 
-/**
- * Simple JWT-Auth Middleware
- * Usage: auth() for all roles, auth(["APOTHEKER"]) or auth(["PRUEFER"]) to restrict
- */
 function auth(roles?: string[]) {
   return async (req: any, res: any, next: any) => {
     const h = req.headers.authorization;
@@ -36,9 +32,7 @@ function auth(roles?: string[]) {
   };
 }
 
-/**
- * DEV Seed: löscht nur Rezepte (keine User), legt Demo-User an (falls nicht vorhanden)
- */
+
 app.post("/dev/seed", async (_req, res) => {
   await prisma.prescription.deleteMany();
 
@@ -92,7 +86,6 @@ function autoCheck(p: {
   if (!p.quantity || p.quantity <= 0) errors.push("quantity");
   if (!p.dateIssued || new Date(p.dateIssued) > new Date()) errors.push("dateIssued");
   const warn = !p.dosage ? ["dosage"] : [];
-  // Wenn es harte Fehler gibt, markieren wir als FEHLERHAFT; sonst PRUEFEN
   const status: Status = errors.length ? Status.FEHLERHAFT : Status.PRUEFEN;
   return { status, errors, warn };
 }
@@ -118,11 +111,7 @@ async function hasDuplicateSameDay(
   return Boolean(existing);
 }
 
-/**
- * Rezept anlegen
- * - Duplikate am selben Tag: 409 Conflict, NICHT speichern
- * - Sonst anlegen; bei harten Fehlern Status = FEHLERHAFT, ansonsten PRUEFEN
- */
+
 app.post(
   "/prescriptions",
   auth(["APOTHEKER"]),

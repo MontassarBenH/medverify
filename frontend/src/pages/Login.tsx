@@ -17,7 +17,7 @@ export default function Login({ onLoggedIn }:{ onLoggedIn:(role:string)=>void })
     <main className="min-h-dvh bg-gradient-to-br from-sky-50 via-white to-emerald-50 flex items-center">
       <div className="max-w-md mx-auto w-full px-4">
         <div className="card">
-          <h2 className="text-2xl font-semibold mb-1">Willkommen 👋</h2>
+          <h2 className="text-2xl font-semibold mb-1">Willkommen </h2>
           <p className="text-sm text-gray-600 mb-4">Logge dich ein, um Rezepte zu erfassen oder zu prüfen.</p>
           <form onSubmit={submit} className="space-y-3">
             {err && <div role="alert" className="text-sm text-red-600">{err}</div>}

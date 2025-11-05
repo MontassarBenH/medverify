@@ -10,6 +10,6 @@
     "allowSyntheticDefaultImports": true,
     "verbatimModuleSyntax": false
   },
-  "include": ["src"],           // 👈 Nur src einbeziehen
-  "exclude": ["node_modules", "prisma.config.ts"]  // 👈 prisma.config.ts ignorieren
+  "include": ["src"],           
+  "exclude": ["node_modules", "prisma.config.ts"] 
 }

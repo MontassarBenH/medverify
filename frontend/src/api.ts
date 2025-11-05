@@ -1,6 +1,9 @@
 import axios from "axios";
 
-export const api = axios.create({ baseURL: "http://localhost:4000" });
+const baseURL =
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://localhost:4000";
+
+export const api = axios.create({ baseURL });
 
 export function setToken(t: string) {
   api.defaults.headers.common.Authorization = `Bearer ${t}`;

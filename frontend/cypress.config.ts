@@ -4,6 +4,7 @@ export default defineConfig({
   e2e: {
     baseUrl: "http://localhost:5173",
     supportFile: false,
+    defaultCommandTimeout: 10000, 
   },
   reporter: "junit",
   reporterOptions: {

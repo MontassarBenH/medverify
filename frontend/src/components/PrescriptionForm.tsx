@@ -2,7 +2,6 @@ import { useState } from "react";
 import { api } from "../api";
 
 export default function PrescriptionForm({ onCreated }:{ onCreated:()=>void }) {
-  // Placeholders wieder exakt wie in den Tests
   const [form,setForm]=useState({ patientName:"", medication:"", dosage:"", quantity:"", dateIssued:"" });
   const [file,setFile]=useState<File|null>(null);
   const [msg,setMsg]=useState("");
@@ -29,12 +28,11 @@ export default function PrescriptionForm({ onCreated }:{ onCreated:()=>void }) {
       }
       onCreated();
     } catch (err:any) {
-      // Duplikate liefern jetzt 409 → NICHT speichern → Meldung zeigen
       const status = err?.response?.status;
       const check = err?.response?.data?.check;
       if (status === 409 && check?.errors?.includes?.("duplicate")) {
         setMsg("Fehler: mögliches Duplikat (gleicher Patient/Medikament am selben Tag).");
-        return; // NICHT onCreated() → Liste nicht neu laden
+        return; 
       }
 
       setMsg("Fehler: Einreichen fehlgeschlagen.");
