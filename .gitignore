@@ -5,25 +5,25 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Builds
+# Builds / Bundles / Caches
 dist/
 build/
-.cache/
 .vite/
+.cache/
 
-# Environment
+# Env
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Cypress
+# Cypress Artefakte
 frontend/cypress/screenshots/
 frontend/cypress/videos/
 frontend/cypress/results/
 
-# Prisma
+# Prisma DB (lokal)
 backend/prisma/dev.db
 backend/prisma/dev.db-journal
 
