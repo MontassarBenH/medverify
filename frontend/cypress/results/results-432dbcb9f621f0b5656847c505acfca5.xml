@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="Mocha Tests" time="4.218" tests="1" failures="0">
-  <testsuite name="Root Suite" timestamp="2025-11-04T19:18:07" tests="1" file="cypress\e2e\status.cy.ts" time="4.214" failures="0">
-    <testcase name="setzt Status auf GUELTIG" time="4.162" classname="setzt Status auf GUELTIG">
-    </testcase>
-  </testsuite>
-</testsuites>

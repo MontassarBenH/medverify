@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="Mocha Tests" time="2.623" tests="1" failures="0">
-  <testsuite name="Root Suite" timestamp="2025-11-04T19:18:00" tests="1" file="cypress\e2e\form.cy.ts" time="2.620" failures="0">
-    <testcase name="zeigt Validierungswarnung bei fehlender Dosierung" time="2.580" classname="zeigt Validierungswarnung bei fehlender Dosierung">
-    </testcase>
-  </testsuite>
-</testsuites>
