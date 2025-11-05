@@ -63,6 +63,16 @@ jobs:
       - name: Wait for frontend
         run: npx wait-on http://localhost:5173
 
+      # --- Fix duplicate Cypress support files ---
+      - name: Clean duplicate support files
+        working-directory: frontend
+        run: |
+          # Keep only .ts version if both exist
+          if [ -f "cypress/support/e2e.js" ] && [ -f "cypress/support/e2e.ts" ]; then
+            echo "Found duplicate support files, removing .js version"
+            rm cypress/support/e2e.js
+          fi
+
       # --- Cypress (headless) ---
       - name: Cypress run
         id: cypress
@@ -72,25 +82,16 @@ jobs:
           VITE_API_BASE_URL: "http://localhost:4000"
         run: npx cypress run
 
-      # --- Debug: Show XML content ---
-      - name: Debug XML files
-        if: always()
-        run: |
-          if ! ls frontend/cypress/results/*.xml 1> /dev/null 2>&1; then
-            echo "No XML files generated - tests may have failed to run"
-            exit 0
-          fi
-          
-          echo "=== Fixed XML Files ==="
-          ls -lh frontend/cypress/results/*.xml || echo "No XML files"
-          echo ""
-          echo "=== Complete XML content (first file after fix) ==="
-          cat frontend/cypress/results/*.xml | head -50 || true
-
       # --- Fix empty testsuite names in XML files ---
       - name: Fix JUnit XML for Xray compatibility
         if: always()
         run: |
+          # Only run if XML files exist
+          if ! ls frontend/cypress/results/*.xml 1> /dev/null 2>&1; then
+            echo "No XML files found to fix"
+            exit 0
+          fi
+          
           cat > fix_xml.py << 'PYTHON_SCRIPT'
           #!/usr/bin/env python3
           import sys
@@ -102,22 +103,39 @@ jobs:
                   tree = ET.parse(filepath)
                   root = tree.getroot()
                   
-                  for testsuite in root.findall('.//testsuite'):
-                      name = testsuite.get('name', '')
-                      
-                      if not name or name.strip() == '':
-                          file_attr = testsuite.get('file', '')
-                          if file_attr:
-                              suite_name = Path(file_attr).stem.replace('.cy', '')
-                              testsuite.set('name', suite_name)
-                              print(f"  Fixed: {filepath.name} -> suite name: {suite_name}")
-                          else:
-                              suite_name = filepath.stem.replace('results-', 'test-')
-                              testsuite.set('name', suite_name)
-                              print(f"  Fallback: {filepath.name} -> suite name: {suite_name}")
+                  # Collect all testsuites to process
+                  testsuites_to_remove = []
                   
-                  if root.tag == 'testsuites' and not root.get('name'):
-                      root.set('name', 'Cypress E2E Tests')
+                  for testsuite in root.findall('.//testsuite'):
+                      tests = int(testsuite.get('tests', '0'))
+                      
+                      # Remove testsuites with 0 tests
+                      if tests == 0:
+                          testsuites_to_remove.append(testsuite)
+                  
+                  # Remove empty testsuites
+                  for ts in testsuites_to_remove:
+                      root.remove(ts)
+                      print(f"  Removed empty testsuite from: {filepath.name}")
+                  
+                  # Update root testsuites name if present
+                  if root.tag == 'testsuites':
+                      if not root.get('name'):
+                          root.set('name', 'Cypress E2E Tests')
+                      
+                      # Recalculate totals after removing empty testsuites
+                      total_tests = 0
+                      total_failures = 0
+                      total_time = 0.0
+                      
+                      for ts in root.findall('.//testsuite'):
+                          total_tests += int(ts.get('tests', '0'))
+                          total_failures += int(ts.get('failures', '0'))
+                          total_time += float(ts.get('time', '0'))
+                      
+                      root.set('tests', str(total_tests))
+                      root.set('failures', str(total_failures))
+                      root.set('time', str(total_time))
                   
                   tree.write(filepath, encoding='utf-8', xml_declaration=True)
                   return True
@@ -135,6 +153,21 @@ jobs:
           
           chmod +x fix_xml.py
           python3 fix_xml.py frontend/cypress/results/
+
+      # --- Debug: Show XML content ---
+      - name: Debug XML files
+        if: always()
+        run: |
+          if ! ls frontend/cypress/results/*.xml 1> /dev/null 2>&1; then
+            echo "No XML files generated - tests may have failed to run"
+            exit 0
+          fi
+          
+          echo "=== Fixed XML Files ==="
+          ls -lh frontend/cypress/results/*.xml || echo "No XML files"
+          echo ""
+          echo "=== Complete XML content (first file after fix) ==="
+          cat frontend/cypress/results/*.xml | head -50 || true
 
       # --- Merge JUnit XML files ---
       - name: Merge JUnit results
