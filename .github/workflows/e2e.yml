@@ -70,6 +70,27 @@ jobs:
           VITE_API_BASE_URL: "http://localhost:4000"
         run: npx cypress run
 
+      # --- Debug: Show XML content ---
+      - name: Debug XML files
+        if: always()
+        run: |
+          echo "=== XML Files Found ==="
+          ls -lh frontend/cypress/results/*.xml || echo "No XML files"
+          echo ""
+          for f in frontend/cypress/results/*.xml; do
+            echo "=== Content of $f ==="
+            cat "$f"
+            echo ""
+          done
+
+      # --- Merge JUnit XML files ---
+      - name: Merge JUnit results
+        if: always()
+        run: |
+          npm install -g junit-merge
+          mkdir -p frontend/cypress/merged
+          junit-merge -o frontend/cypress/merged/combined-results.xml frontend/cypress/results/*.xml || true
+
       # --- Artefakte (JUnit XML) ---
       - name: Upload JUnit
         if: always()

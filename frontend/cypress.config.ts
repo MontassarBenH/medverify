@@ -6,9 +6,16 @@ export default defineConfig({
     supportFile: false,
     defaultCommandTimeout: 10000, 
   },
-  reporter: "junit",
-  reporterOptions: {
-    mochaFile: "cypress/results/results-[hash].xml",
-    toConsole: true,
-  },
+  reporter: 'cypress-multi-reporters',
+    reporterOptions: {
+      reporterEnabled: 'spec, mocha-junit-reporter',
+      mochaJunitReporterReporterOptions: {
+        mochaFile: 'cypress/results/results-[hash].xml',
+        toConsole: false,
+        outputs: true,
+        testCaseSwitchClassnameAndName: false,
+        suiteTitleSeparatedBy: ' > ',
+        useFullSuiteTitle: true,
+      },
+    },
 });
