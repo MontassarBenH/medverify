@@ -26,6 +26,15 @@ frontend/cypress/results/
 # Prisma DB (lokal)
 backend/prisma/dev.db
 backend/prisma/dev.db-journal
+backend/prisma/dev.db
+backend/prisma/prisma/dev.db
+backend/prisma/dev.db-journal
+backend/prisma/prisma/dev.db-journal
+node_modules/
+dist/
+frontend/cypress/screenshots/
+frontend/cypress/videos/
+frontend/cypress/results/
 
 # OS
 .DS_Store
