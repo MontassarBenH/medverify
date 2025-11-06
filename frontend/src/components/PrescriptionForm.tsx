@@ -30,9 +30,15 @@ export default function PrescriptionForm({ onCreated }:{ onCreated:()=>void }) {
     } catch (err:any) {
       const status = err?.response?.status;
       const check = err?.response?.data?.check;
+
       if (status === 409 && check?.errors?.includes?.("duplicate")) {
         setMsg("Fehler: mögliches Duplikat (gleicher Patient/Medikament am selben Tag).");
-        return; 
+        return;
+      }
+
+      if ((status === 400 || status === 422) && Array.isArray(check?.errors) && check.errors.length) {
+        setMsg("Fehler: " + check.errors.join(", "));
+        return;
       }
 
       setMsg("Fehler: Einreichen fehlgeschlagen.");

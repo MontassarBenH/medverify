@@ -1,13 +1,15 @@
 /// <reference types="cypress" />
 
+const API = Cypress.env('API_URL') || 'http://localhost:4000';
+
 Cypress.Commands.add('seed', () => {
-  cy.request('POST', 'http://localhost:4000/dev/seed');
+  cy.request('POST', `${API}/dev/seed`);
 });
 
 Cypress.Commands.add('loginAs', (email: string, password = 'password123') => {
   // Intercepts VOR Aktionen setzen
-  cy.intercept('POST', 'http://localhost:4000/auth/login').as('login');
-  cy.intercept('GET', 'http://localhost:4000/prescriptions*').as('list');
+  cy.intercept('POST', `${API}/auth/login`).as('login');
+  cy.intercept('GET',  `${API}/prescriptions*`).as('list');
 
   cy.visit('/');
 
@@ -16,12 +18,22 @@ Cypress.Commands.add('loginAs', (email: string, password = 'password123') => {
   cy.contains('button', 'Einloggen').should('be.enabled').click();
 
   cy.wait('@login').its('response.statusCode').should('eq', 200);
-  cy.wait('@list'); 
+  cy.wait('@list');
 });
 
 Cypress.Commands.add('waitForPrescriptions', () => {
-  cy.intercept('GET', 'http://localhost:4000/prescriptions*').as('listReload');
+  cy.intercept('GET', `${API}/prescriptions*`).as('listReload');
   cy.wait('@listReload');
+});
+
+
+Cypress.Commands.add('clearDateInput', (selector: string) => {
+  cy.get(selector).then(($el) => {
+    const input = $el[0] as HTMLInputElement;
+    input.value = '';
+    input.dispatchEvent(new Event('input',  { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
 });
 
 declare global {
@@ -31,6 +43,7 @@ declare global {
       seed(): Chainable<void>;
       loginAs(email: string, password?: string): Chainable<void>;
       waitForPrescriptions(): Chainable<void>;
+      clearDateInput(selector: string): Chainable<void>;
     }
   }
 }

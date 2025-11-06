@@ -77,18 +77,49 @@ function autoCheck(p: {
   patientName?: string;
   medication?: string;
   quantity?: number;
-  dateIssued?: Date | string;
+  dateIssued?: Date | string | null;
   dosage?: string | null;
 }) {
   const errors: string[] = [];
-  if (!p.patientName || p.patientName.length < 3) errors.push("patientName");
-  if (!p.medication) errors.push("medication");
-  if (!p.quantity || p.quantity <= 0) errors.push("quantity");
-  if (!p.dateIssued || new Date(p.dateIssued) > new Date()) errors.push("dateIssued");
+
+  // Patient name: required + at least 3 chars
+  if (!p.patientName || p.patientName.trim().length < 3) {
+    errors.push("patientName");
+  }
+
+  // Medication: required
+  if (!p.medication || p.medication.trim().length === 0) {
+    errors.push("medication");
+  }
+
+  // Quantity: must be > 0 and a valid number
+  if (!p.quantity || isNaN(p.quantity) || p.quantity <= 0) {
+    errors.push("quantity");
+  }
+
+  // Date validation: required, valid, and not in the future
+  let d: Date | null = null;
+  if (p.dateIssued) {
+    try {
+      d = new Date(p.dateIssued);
+    } catch {
+      d = null;
+    }
+  }
+
+  if (!d || isNaN(d.getTime()) || d > new Date()) {
+    errors.push("dateIssued");
+  }
+
+  // Warn if dosage missing, but not a hard error
   const warn = !p.dosage ? ["dosage"] : [];
+
+  // Status assignment
   const status: Status = errors.length ? Status.FEHLERHAFT : Status.PRUEFEN;
+
   return { status, errors, warn };
 }
+
 
 /**
  * Duplikat-Check: gleicher Patient + Medikament am selben Kalendertag
@@ -111,6 +142,13 @@ async function hasDuplicateSameDay(
   return Boolean(existing);
 }
 
+function parseValidDate(v: unknown): Date | null {
+  if (v == null) return null;
+  const d = new Date(v as any);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+
 
 app.post(
   "/prescriptions",
@@ -120,31 +158,51 @@ app.post(
     try {
       const { patientName, medication, dosage, quantity, dateIssued } = req.body;
 
-      const payload = {
+      // 1) Rohdaten (ohne Date-Parsing) an autoCheck geben
+      const raw = {
         patientName,
         medication,
         dosage: dosage ?? null,
         quantity: Number(quantity),
-        dateIssued: new Date(dateIssued),
+        dateIssued, 
       };
 
-      const check = autoCheck(payload);
+      const check = autoCheck(raw);
 
-      // Duplikat?
+      // 2) Bei harten Validierungsfehlern (inkl. dateIssued) NICHT speichern
+      if (check.errors.includes("patientName") ||
+          check.errors.includes("medication") ||
+          check.errors.includes("quantity")   ||
+          check.errors.includes("dateIssued")) {
+        return res.status(400).json({ error: "validation", check });
+      }
+
+      // 3) Sicher parsen
+      const validDate = parseValidDate(dateIssued);
+      if (!validDate) {
+        check.errors.push("dateIssued");
+        return res.status(400).json({ error: "validation", check });
+      }
+
+      // 4) Duplikat-Check mit gültigem Datum
       const isDup = await hasDuplicateSameDay({
-        patientName: payload.patientName,
-        medication: payload.medication,
-        dateIssued: payload.dateIssued,
+        patientName: raw.patientName!,
+        medication: raw.medication!,
+        dateIssued: validDate,
       });
       if (isDup) {
         check.errors.push("duplicate");
-        // NICHT speichern:
         return res.status(409).json({ error: "duplicate", check });
       }
 
+      // 5) Speichern – JETZT mit geprüftem Date
       const created = await prisma.prescription.create({
         data: {
-          ...payload,
+          patientName: raw.patientName!,
+          medication: raw.medication!,
+          dosage: raw.dosage,
+          quantity: raw.quantity,
+          dateIssued: validDate, 
           status: check.errors.length ? Status.FEHLERHAFT : Status.PRUEFEN,
           uploadedFile: req.file?.path || null,
           createdById: req.user.sub,
