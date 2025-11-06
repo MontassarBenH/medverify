@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Backend Tests" tests="4" failures="0" errors="0" time="3.205">
+  <testsuite name="tests\unit\autoCheck.spec.ts" errors="0" failures="0" skipped="0" timestamp="2025-11-06T19:55:31" time="1.493" tests="2">
+    <testcase classname="autoCheck (unit)" name="valid payload → PRUEFEN, warn bei fehlender dosage" time="0.005">
+    </testcase>
+    <testcase classname="autoCheck (unit)" name="medication leer → Fehler" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="tests\integration\auth.login.int.spec.ts" errors="0" failures="0" skipped="0" timestamp="2025-11-06T19:55:32" time="1.515" tests="2">
+    <testcase classname="POST /auth/login (integration)" name="liefert 200 + token bei korrekten Credentials" time="0.124">
+    </testcase>
+    <testcase classname="POST /auth/login (integration)" name="liefert 401 bei falschem Passwort" time="0.095">
+    </testcase>
+  </testsuite>
+</testsuites>

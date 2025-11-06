@@ -254,3 +254,6 @@ app.patch("/prescriptions/:id/status", auth(["PRUEFER"]), async (req: any, res) 
  */
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 app.listen(PORT, () => console.log(`API on http://localhost:${PORT}`));
+
+export default app;
+

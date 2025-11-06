@@ -49,6 +49,15 @@ jobs:
           done
           echo "Seed OK"
 
+      # --- NEW: Backend Jest-Tests (Unit/Integration) ---
+      - name: Run backend tests (Jest)
+        working-directory: backend
+        # analog zu Cypress lassen wir den Job weiterlaufen, auch wenn Tests fehlschlagen
+        continue-on-error: true
+        run: |
+          set -e
+          npm test
+
       # --- Frontend: deps, build, start ---
       - name: Frontend deps & build & start
         working-directory: frontend
@@ -191,16 +200,25 @@ jobs:
           junit-merge -o frontend/cypress/merged/combined-results.xml frontend/cypress/results/*.xml
           cp frontend/cypress/merged/combined-results.xml frontend/cypress/for-xray/results.xml
 
-      # --- Artefakte (JUnit XML) ---
-      - name: Upload JUnit (all)
+      # --- Artefakte (JUnit XML) - Cypress ---
+      - name: Upload JUnit (Cypress)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: junit
+          name: junit-cypress
           path: |
             frontend/cypress/results/*.xml
             frontend/cypress/merged/combined-results.xml
             frontend/cypress/for-xray/results.xml
+          if-no-files-found: ignore
+
+      # --- NEW: Artefakte (JUnit XML) - Jest ---
+      - name: Upload JUnit (Jest)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-jest
+          path: backend/junit/jest-results.xml
           if-no-files-found: ignore
 
       # --- Authenticate with Xray and get token ---
@@ -216,7 +234,8 @@ jobs:
             -d "{\"client_id\":\"$XRAY_CLIENT_ID\",\"client_secret\":\"$XRAY_CLIENT_SECRET\"}" | tr -d '"')
           echo "XRAY_TOKEN=$TOKEN" >> $GITHUB_OUTPUT
 
-      - name: Import to Xray
+      # --- Import Cypress to Xray ---
+      - name: Import Cypress to Xray
         if: always()
         env:
           XRAY_TOKEN: ${{ steps.xray_auth.outputs.XRAY_TOKEN }}
@@ -225,16 +244,11 @@ jobs:
           RESULTS="frontend/cypress/for-xray/results.xml"
 
           if [ ! -s "$RESULTS" ]; then
-            echo "No results file at $RESULTS. Skipping Xray upload."
+            echo "No Cypress results at $RESULTS. Skipping Xray upload."
             exit 0
           fi
 
-          echo "Uploading $RESULTS to Xray..."
-          ls -lh "$RESULTS"
-          echo "First 30 lines:"
-          head -30 "$RESULTS" || true
-
-          # WICHTIG: KEIN manuelles -H "Content-Type: multipart/form-data"
+          echo "Uploading Cypress JUnit to Xray..."
           response=$(curl -s -w "\n%{http_code}" \
           -H "Authorization: Bearer $XRAY_TOKEN" \
           -H "Content-Type: text/xml" \
@@ -245,10 +259,43 @@ jobs:
           body=$(echo "$response" | sed '$d')
 
           if [ "$http_code" -eq 200 ]; then
-            echo "✓ Successfully uploaded results to Xray"
+            echo "✓ Uploaded Cypress results to Xray"
             echo "Response: $body"
           else
-            echo "✗ Failed to upload results to Xray (HTTP $http_code)"
+            echo "✗ Failed to upload Cypress results (HTTP $http_code)"
+            echo "Response: $body"
+            exit 1
+          fi
+
+      # --- NEW: Import Jest to Xray ---
+      - name: Import Jest to Xray
+        if: always()
+        env:
+          XRAY_TOKEN: ${{ steps.xray_auth.outputs.XRAY_TOKEN }}
+        run: |
+          set -e
+          RESULTS="backend/junit/jest-results.xml"
+
+          if [ ! -s "$RESULTS" ]; then
+            echo "No Jest results at $RESULTS. Skipping Xray upload."
+            exit 0
+          fi
+
+          echo "Uploading Jest JUnit to Xray..."
+          response=$(curl -s -w "\n%{http_code}" \
+          -H "Authorization: Bearer $XRAY_TOKEN" \
+          -H "Content-Type: text/xml" \
+          --data-binary @"$RESULTS" \
+          "https://xray.cloud.getxray.app/api/v2/import/execution/junit?projectKey=MV")
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          if [ "$http_code" -eq 200 ]; then
+            echo "✓ Uploaded Jest results to Xray"
+            echo "Response: $body"
+          else
+            echo "✗ Failed to upload Jest results (HTTP $http_code)"
             echo "Response: $body"
             exit 1
           fi
