@@ -52,11 +52,19 @@ jobs:
       # --- NEW: Backend Jest-Tests (Unit/Integration) ---
       - name: Run backend tests (Jest)
         working-directory: backend
-        # analog zu Cypress lassen wir den Job weiterlaufen, auch wenn Tests fehlschlagen
         continue-on-error: true
+        env:
+          DATABASE_URL: "file:./dev.db"
+          JWT_SECRET: "devsecret"
+          NODE_ENV: "test"
         run: |
           set -e
+          echo "Setting up Prisma before Jest..."
+          npx prisma generate
+          npx prisma migrate deploy
+          echo "Prisma ready, now running Jest tests"
           npm test
+
 
       # --- Frontend: deps, build, start ---
       - name: Frontend deps & build & start
