@@ -28,5 +28,7 @@ describe('Rezept – Duplikat-Prüfung', () => {
     cy.get('[data-testid="plausi-msg"]', { timeout: 10000 })
       .should('be.visible')
       .and('contain.text', 'mögliches Duplikat');
+
+    expect(false, 'intentional failure to test reports').to.be.true;
   });
 });

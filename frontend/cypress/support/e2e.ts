@@ -1,4 +1,7 @@
 /// <reference types="cypress" />
+import 'cypress-mochawesome-reporter/register';
+import addContext from 'mochawesome/addContext';
+
 
 const API = Cypress.env('API_URL') || 'http://localhost:4000';
 
@@ -34,6 +37,16 @@ Cypress.Commands.add('clearDateInput', (selector: string) => {
     input.dispatchEvent(new Event('input',  { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   });
+});
+
+Cypress.on('test:after:run', (test, runnable) => {
+  if (!Cypress.config('video')) return;
+
+  const specName = Cypress.spec.name;
+
+  const videoPath = `videos/${specName}.mp4`;
+
+  addContext({ test }, videoPath);
 });
 
 declare global {

@@ -1,15 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="Backend Tests" tests="4" failures="0" errors="0" time="3.205">
-  <testsuite name="tests\unit\autoCheck.spec.ts" errors="0" failures="0" skipped="0" timestamp="2025-11-06T19:55:31" time="1.493" tests="2">
-    <testcase classname="autoCheck (unit)" name="valid payload → PRUEFEN, warn bei fehlender dosage" time="0.005">
+<testsuites name="Backend Tests" tests="4" failures="2" errors="0" time="3.053">
+  <testsuite name="tests\integration\auth.login.int.spec.ts" errors="0" failures="2" skipped="0" timestamp="2025-11-10T21:14:01" time="2.485" tests="2">
+    <testcase classname="POST /auth/login (integration)" name="liefert 200 + token bei korrekten Credentials" time="0.026">
+      <failure>Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: 200
+Received: 500
+    at Object.&lt;anonymous&gt; (C:\Users\49171\Desktop\medverify\backend\tests\integration\auth.login.int.spec.ts:13:24)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)</failure>
     </testcase>
-    <testcase classname="autoCheck (unit)" name="medication leer → Fehler" time="0.001">
+    <testcase classname="POST /auth/login (integration)" name="liefert 401 bei falschem Passwort" time="0.008">
+      <failure>Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: 401
+Received: 500
+    at Object.&lt;anonymous&gt; (C:\Users\49171\Desktop\medverify\backend\tests\integration\auth.login.int.spec.ts:22:24)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)</failure>
     </testcase>
   </testsuite>
-  <testsuite name="tests\integration\auth.login.int.spec.ts" errors="0" failures="0" skipped="0" timestamp="2025-11-06T19:55:32" time="1.515" tests="2">
-    <testcase classname="POST /auth/login (integration)" name="liefert 200 + token bei korrekten Credentials" time="0.124">
+  <testsuite name="tests\unit\autoCheck.spec.ts" errors="0" failures="0" skipped="0" timestamp="2025-11-10T21:14:04" time="0.124" tests="2">
+    <testcase classname="autoCheck (unit)" name="valid payload → PRUEFEN, warn bei fehlender dosage" time="0.003">
     </testcase>
-    <testcase classname="POST /auth/login (integration)" name="liefert 401 bei falschem Passwort" time="0.095">
+    <testcase classname="autoCheck (unit)" name="medication leer → Fehler" time="0.001">
     </testcase>
   </testsuite>
 </testsuites>
